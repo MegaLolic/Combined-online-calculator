@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Калькулятор термопар (ГОСТ Р 8.585-2001) + точка росы</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #eef2f5; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        h2, h3 { color: #000000; border-bottom: 2px solid #b0c4de; padding-bottom: 5px; }
+        .section { margin-top: 25px; border-top: 1px solid #ccc; padding-top: 15px; }
+        .row { margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        label { width: 220px; font-weight: 600; }
+        input, select { padding: 8px; width: 220px; border: 1px solid #aaa; border-radius: 6px; }
+        button { padding: 8px 18px; background: #1e466e; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 8px; margin-top: 5px; }
+        button:hover { background: #0f2f4a; }
+        .result { background: #e9f0f5; padding: 15px; margin-top: 15px; border-radius: 8px; font-size: 1.2em; font-weight: bold; border-left: 5px solid #1e466e; }
+        .info { font-size: 0.85em; margin-top: 8px; padding: 6px; border-radius: 6px; }
+        .warning { color: #c7254e; background: #f9f2f4; }
+        .normal { color: #2c6e2c; background: #e6f4e6; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; font-size: 0.85em; }
+        th, td { border: 1px solid #bbb; padding: 6px; text-align: center; }
+        th { background: #d9e3ed; }
+        .lang-btn { background: #5a6e7c; margin-left: 8px; }
+        .lang-btn.active { background: #2c6e2c; }
+        .flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        small { color: #4a627a; }
+        .unit-badge { min-width: 36px; display: inline-block; font-weight: 600; color: #1e466e; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="flex">
+        <h2 id="mainTitle">Калькулятор термопар</h2>
+        <div>
+            <button class="lang-btn active" data-lang="ru">Русский</button>
+            <button class="lang-btn" data-lang="en">English</button>
+        </div>
+    </div>
+
+    <div class="row"><label id="lblType">Тип термопары:</label>
+        <select id="tcType">
+            <option value="R">R (Pt13%Rh-Pt)</option><option value="S">S (Pt10%Rh-Pt)</option>
+            <option value="B">B (Pt30%Rh-Pt6%Rh)</option><option value="J">J (Fe-CuNi)</option>
+            <option value="T">T (Cu-CuNi)</option><option value="E">E (NiCr-CuNi)</option>
+            <option value="K" selected>K (NiCr-NiAl)</option><option value="N">N (NiCrSi-NiSi)</option>
+            <option value="A1">A-1 (W5Re-W20Re)</option><option value="A2">A-2 (W5Re-W20Re)</option>
+            <option value="A3">A-3 (W5Re-W20Re)</option><option value="L">L (Chromel-Copel)</option>
+            <option value="M">M (Cu-Copel)</option>
+        </select>
+    </div>
+
+    <div class="row"><label id="lblMode">Режим:</label>
+        <select id="mode">
+            <option value="T2E">Температура → ЭДС</option>
+            <option value="E2T">ЭДС → Температура</option>
+        </select>
+    </div>
+
+    <div class="row"><label id="lblUnit">Температурная шкала:</label>
+        <select id="tempUnit">
+            <option value="C">°C</option>
+            <option value="K">K</option>
+            <option value="F">°F</option>
+        </select>
+    </div>
+
+    <div id="inputsArea"></div>
+    <div class="result" id="resultDisplay">—</div>
+    <div id="rangeInfo" class="info normal"></div>
+
+    <div class="section">
+        <h3 id="tblTitle">Таблица (температура → ЭДС)</h3>
+        <div class="row"><label id="lblStart">Начало (°C):</label><input type="number" id="startTemp" value="0" step="50"></div>
+        <div class="row"><label id="lblEnd">Конец (°C):</label><input type="number" id="endTemp" value="500" step="50"></div>
+        <div class="row"><label id="lblStep">Шаг (°C):</label><input type="number" id="stepTemp" value="50" step="10"></div>
+        <div class="row"><label id="lblColdTbl">Холодный спай (°C):</label><input type="number" id="coldTable" value="0" step="5"></div>
+        <button id="genTable">Сформировать таблицу</button>
+        <button id="exportCSV" style="background:#2a6e3a;">Экспорт CSV</button>
+        <div id="tableView" style="overflow-x:auto; margin-top:15px;"></div>
+    </div>
+
+    <div class="section">
+        <h2 id="dewTitle">Точка росы</h2>
+        <div class="row"><label id="lblAirTemp">Температура воздуха:</label><input type="number" id="airTemp" value="25" step="0.5"><span id="unitDew" class="unit-badge">°C</span></div>
+        <div class="row"><label id="lblHum">Относительная влажность (%):</label><input type="number" id="humidity" value="60" step="1" min="0.1" max="100"></div>
+        <button id="calcDew">Рассчитать точку росы</button>
+        <div class="result" id="dewResult" style="background:#d9ead3;">Точка росы: -- °C</div>
+        <div id="dewFormulaText" class="info normal" style="font-size:0.8rem;">Формула: Td = (b·γ)/(a−γ), γ = (a·T)/(b+T) + ln(RH/100), a=17.27, b=237.7</div>
+    </div>
+</div>
+
+<script>
+    // ====================================================================
+    // КОРРЕКТНЫЕ РАСЧЁТНЫЕ ФУНКЦИИ (из эталонного скрипта)
+    // ====================================================================
+    
+    // ----- type K -----
+    function typeK_TtoMV(t) { if(t< -270||t>1372) return NaN; let mv=0; const c1=[0,3.9450128025e-2,2.3622373598e-5,-3.2858906784e-7,-4.9904828777e-9,-6.7509059173e-11,-5.7410327428e-13,-3.1088872894e-15,-1.0451609365e-17,-1.9889266878e-20,-1.6322697486e-23]; const c2=[-1.7600413686e-2,3.8921204975e-2,1.8558770032e-5,-9.9457928974e-8,3.1840945719e-10,-5.6072844889e-13,5.6075059059e-16,-3.2020720003e-19,9.7151147152e-23,-1.2104721275e-26]; if(t<0){ c1.forEach((ci,i)=>mv+=ci*Math.pow(t,i)); } else { c2.forEach((ci,i)=>mv+=ci*Math.pow(t,i)); mv+=1.185976e-1*Math.exp(-1.183432e-4*Math.pow(t-126.9686,2)); } return mv; }
+    function typeK_MVtoT(mv){ if(mv< -5.891||mv>54.886) return NaN; let t=0; if(mv<0){ const c=[0,2.5173462e+1,-1.1662878,-1.0833638,-8.9773540e-1,-3.7342377e-1,-8.6632643e-2,-1.0450598e-2,-5.1920577e-4]; c.forEach((ci,i)=>t+=ci*Math.pow(mv,i)); } else if(mv<=20.644){ const c=[0,2.508355e+1,7.860106e-2,-2.503131e-1,8.315270e-2,-1.228034e-2,9.804036e-4,-4.413030e-5,1.057734e-6,-1.052755e-8]; c.forEach((ci,i)=>t+=ci*Math.pow(mv,i)); } else { const c=[-1.318058e+2,4.830222e+1,-1.646031,5.464731e-2,-9.650715e-4,8.802193e-6,-3.110810e-8]; c.forEach((ci,i)=>t+=ci*Math.pow(mv,i)); } return t; }
+    
+    // ----- type A1 -----
+    function typeA1_TtoMV(t){ if(t<0||t>2500) return NaN; const c=[7.1564735e-4,1.1951905e-2,1.6672625e-5,-2.8287807e-8,2.8397839e-11,-1.8505007e-14,7.3632123e-18,-1.6148878e-21,1.4901679e-25]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); }
+    function typeA1_MVtoT(mv){ if(mv<0||mv>33.640) return NaN; const c=[0.9643027,7.9495086e1,-4.9990310,0.6341776,-4.7440967e-2,2.1811337e-3,-5.8324228e-5,8.2433725e-7,-4.5928480e-9]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); }
+    
+    // ----- type A2 -----
+    function typeA2_TtoMV(t){ if(t<0||t>1800) return NaN; const c=[-1.0850558e-4,1.1642292e-2,2.1280289e-5,-4.4258402e-8,5.5652058e-11,-4.3801310e-14,2.0228390e-17,-4.9354041e-21,4.8119846e-25]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); }
+    function typeA2_MVtoT(mv){ if(mv<0||mv>27.232) return NaN; const c=[1.1196428,8.0569397e+1,-6.2279122,0.9337015,-8.2608051e-2,4.4110979e-3,-1.3610551e-4,2.2183851e-6,-1.4527698e-8]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); }
+    
+    // ----- type A3 -----
+    function typeA3_TtoMV(t){ if(t<0||t>1800) return NaN; const c=[-1.0649133e-4,1.1686475e-2,1.8022157e-5,-3.3436998e-8,3.7081688e-11,-2.5748444e-14,1.0301893e-17,-2.0735944e-21,1.4678450e-25]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); }
+    function typeA3_MVtoT(mv){ if(mv<0||mv>26.773) return NaN; const c=[0.8769216,8.1483231e1,-5.9344173,0.8699340,-7.6797687e-2,4.1814387e-3,-1.3439670e-4,2.342409e-6,-1.6988727e-8]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); }
+    
+    // ----- type B -----
+    function typeB_TtoMV(t){ if(t<0||t>1820) return NaN; if(t<=630.615){ const c=[0,-2.4650818346e-4,5.9040421171e-6,-1.3257931636e-9,1.5668291901e-12,-1.6944529240e-15,6.2990347094e-19]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[-3.8938168621,2.8571747470e-2,-8.4885104785e-5,1.5785280164e-7,-1.6835344864e-10,1.1109794013e-13,-4.4515431033e-17,9.8975640821e-21,-9.3791330289e-25]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeB_MVtoT(mv){ if(mv<0.291||mv>13.820) return NaN; const c = mv<=2.431 ? [9.8423321e1,6.9971500e2,-8.4765304e2,1.0052644e3,-8.3345952e2,4.5508542e2,-1.5523037e2,2.9886750e1,-2.4742860] : [2.1315071e2,2.8510504e2,-5.2742887e1,9.9160804,-1.2965303,1.1195870e-1,-6.0625199e-3,1.8661696e-4,-2.4878585e-6]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); }
+    
+    // ----- type E -----
+    function typeE_TtoMV(t){ if(t<-270||t>1000) return NaN; if(t<0){ const c=[0,5.8665508708e-2,4.5410977124e-5,-7.7998048686e-7,-2.5800160843e-8,-5.9452583057e-10,-9.3214058667e-12,-1.0287605534e-13,-8.0370123621e-16,-4.3979497391e-18,-1.6414776355e-20,-3.9673619516e-23,-5.5827382721e-26,-3.4657842013e-29]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[0,5.8665508710e-2,4.5032275582e-5,2.8908407212e-8,-3.3056896652e-10,6.5024403270e-13,-1.9197495504e-16,-1.2536600497e-18,2.1489217569e-21,-1.4388041782e-24,3.5960899481e-28]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeE_MVtoT(mv){ if(mv<-8.825||mv>76.373) return NaN; if(mv<0){ const c=[0,1.6977288e1,-4.3514970e-1,-1.5859697e-1,-9.2502871e-2,-2.6084314e-2,-4.1360199e-3,-3.4034030e-4,-1.1564890e-5]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else { const c=[0,1.7057035e1,-2.3301759e-1,6.5435585e-3,-7.3562749e-5,-1.7896001e-6,8.4036165e-8,-1.3735879e-9,1.0629823e-11,-3.2447087e-14]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } }
+    
+    // ----- type J -----
+    function typeJ_TtoMV(t){ if(t<-210||t>1200) return NaN; if(t<=760){ const c=[0,5.0381187815e-2,3.0475836930e-5,-8.5681065720e-8,1.3228195295e-10,-1.7052958337e-13,2.0948090697e-16,-1.2538395336e-19,1.5631725697e-23]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[2.9645625681e2,-1.4976127786,3.1787103924e-3,-3.1847686701e-6,1.5720819004e-9,-3.0691369056e-13]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeJ_MVtoT(mv){ if(mv<-8.095||mv>69.553) return NaN; if(mv<0){ const c=[0,1.9528268e1,-1.2286185,-1.0752178,-5.9086933e-1,-1.7256713e-1,-2.8131513e-2,-2.3963370e-3,-8.3823321e-5]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else if(mv<=42.919){ const c=[0,1.978425e1,-2.001204e-1,1.036969e-2,-2.549687e-4,3.585153e-6,-5.344285e-8,5.099890e-10]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else { const c=[-3.11358187e3,3.00543684e2,-9.94773230,1.70276630e-1,-1.43033468e-3,4.73886084e-6]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } }
+    
+    // ----- type L -----
+    function typeL_TtoMV(t){ if(t<-200||t>800) return NaN; if(t<0){ const c=[-5.8952244e-5,6.3391502e-2,6.7592964e-5,2.0672566e-7,5.5720884e-9,5.7133860e-11,3.2995593e-13,9.9232420e-16,1.2079584e-18]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[-1.8656953e-5,6.3310975e-2,6.0153091e-5,-8.0073134e-8,9.6946071e-11,-3.6047289e-14,-2.4694775e-16,4.2880341e-19,-2.0725297e-22]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeL_MVtoT(mv){ if(mv<-9.488||mv>66.466) return NaN; if(mv<0){ const c=[1.1573067e-4,1.5884573e1,4.0458554e-2,0.3170064,0.1666128,5.1946958e-2,9.5288883e-3,1.0301283e-3,6.0654431e-5,1.5131878e-6]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else { const c=[7.2069422e-3,1.5775525e1,-0.2261183,9.4286756e-3,-3.5394655e-4,1.0050886e-5,-1.9323678e-7,2.3816891e-9,-1.7130654e-11,5.4857331e-14]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } }
+    
+    // ----- type M -----
+    function typeM_TtoMV(t){ if(t<-200||t>100) return NaN; const c=[2.4455560e-6,4.2638917e-2,5.0348392e-5,-4.4974485e-8]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); }
+    function typeM_MVtoT(mv){ if(mv<-6.154||mv>4.722) return NaN; const c=[0.4548090,2.2657698e-2,-7.7935652e-7,1.1786931e-10]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); }
+    
+    // ----- type N -----
+    function typeN_TtoMV(t){ if(t<-270||t>1300) return NaN; if(t<0){ const c=[0,2.6159105962e-2,1.0957484228e-5,-9.384111554e-8,-4.6412039759e-11,-2.6303357716e-12,-2.2653488003e-15,-7.6089300791e-17,-9.3419667835e-20]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[0,2.5929394601e-2,1.57104188e-5,4.3825627237e-8,-2.5261169794e-10,6.4311819339e-13,-1.0063471519e-15,9.9745338992e-19,-6.0863245607e-22,2.0849229339e-25,-3.0682196151e-29]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeN_MVtoT(mv){ if(mv<-3.990||mv>47.513) return NaN; if(mv<0){ const c=[0,3.8436847e1,1.1010485,5.2229312,7.2060525,5.8488586,2.7754916,7.7075166e-1,1.1582665e-1,7.3138868e-3]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else if(mv<=20.613){ const c=[0,3.868896e1,-1.08267,4.70205e-2,-2.12169e-6,-1.17272e-4,5.39280e-6,-7.98156e-8]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else { const c=[1.972485e1,3.300943e1,-3.915159e-1,9.855391e-3,-1.274371e-4,7.767022e-7]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } }
+    
+    // ----- type R -----
+    function typeR_TtoMV(t){ if(t<-50||t>1768.1) return NaN; if(t<=1064.18){ const c=[0,5.28961729765e-3,1.39166589782e-5,-2.38855693017e-8,3.569160001063e-11,-4.62347666298e-14,5.00777441034e-17,-3.73105886191e-20,1.57716482367e-23,-2.81038625251e-27]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else if(t<=1664.5){ const c=[2.95157925316,-2.52061251332e-3,1.59564501865e-5,-7.64085947576e-9,2.05305291024e-12,-2.93359668173e-16]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[1.52232118209e2,-2.68819888545e-1,1.71280280471e-4,-3.45895706453e-8,-9.34633971046e-15]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeR_MVtoT(mv){ if(mv<-0.225||mv>21.103) return NaN; if(mv<=1.923){ const c=[0,1.8891380e2,-9.3835290e1,1.3086619e2,-2.2703580e2,3.5145659e2,-3.8953900e2,2.8239471e2,-1.2607281e2,3.1353611e1,-3.3187769]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else if(mv<=11.361){ const c=[1.334584505e1,1.472644573e2,-1.844024844e1,4.031129726,-6.249428360e-1,6.468412046e-2,-4.458750426e-3,1.994710149e-4,-5.313401790e-6,6.481976217e-8]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else if(mv<=19.739){ const c=[-8.199599416e1,1.553962042e2,-8.342197663,4.279433549e-1,-1.191577910e-2,1.492290091e-4]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else { const c=[3.406177836e4,-7.023729171e3,5.582903813e2,-1.952394635e1,2.560740231e-1]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } }
+    
+    // ----- type S -----
+    function typeS_TtoMV(t){ if(t<-50||t>1768.1) return NaN; if(t<=1064.18){ const c=[0,5.40313308631e-3,1.25934289740e-5,-2.32477968689e-8,3.22028823036e-11,-3.31465196389e-14,2.55744251786e-17,-1.25068871393e-20,2.71443176145e-24]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else if(t<=1664.5){ const c=[1.32900444085,3.34509311344e-3,6.54805192818e-6,-1.64856259209e-9,1.29989605174e-14]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[1.46628232636e2,-2.58430516752e-1,1.63693574641e-4,-3.30439046987e-8,-9.43223690612e-15]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeS_MVtoT(mv){ if(mv<-0.235||mv>18.694) return NaN; if(mv<=1.874){ const c=[0,1.84949460e2,-8.00504062e1,1.02237430e2,-1.52248592e2,1.88821343e2,-1.59085941e2,8.23027780e1,-2.34181944e1,2.79786260]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else if(mv<=10.332){ const c=[1.291507177e1,1.466298863e2,-1.534713402e1,3.145945973,-4.163257839e-1,3.187963771e-2,-1.2916375e-3,2.183475087e-5,-1.447379511e-7,8.211272125e-9]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else if(mv<=17.536){ const c=[-8.087801117e1,1.621573104e2,-8.536869453,4.719686976e-1,-1.441693666e-2,2.081618890e-4]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else { const c=[5.333875126e4,-1.235892298e4,1.092657613e3,-4.265963686e1,6.247205420e-1]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } }
+    
+    // ----- type T -----
+    function typeT_TtoMV(t){ if(t<-270||t>400) return NaN; if(t<0){ const c=[0,3.8748106364e-2,4.4194434347e-5,1.1844323105e-7,2.0032973554e-8,9.0138019559e-10,2.2651156593e-11,3.6071154205e-13,3.8493939883e-15,2.8213521925e-17,1.4251594779e-19,4.8786662286e-22,1.0795539270e-24,1.3945027062e-27,7.9795153927e-31]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } else { const c=[0,3.8748106364e-2,3.3292227880e-5,2.0618243404e-7,-2.1882256846e-9,1.0996880928e-11,-3.0815758772e-14,4.5479135290e-17,-2.7512901673e-20]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(t,i),0); } }
+    function typeT_MVtoT(mv){ if(mv<-5.603||mv>20.872) return NaN; if(mv<0){ const c=[0,2.5949192e1,-2.1316967e-1,7.9018692e-1,4.2527777e-1,1.3304473e-1,2.0241446e-2,1.2668171e-3]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } else { const c=[0,2.592800e1,-7.602961e-1,4.637791e-2,-2.165394e-3,6.048144e-5,-7.293422e-7]; return c.reduce((sum,ci,i)=>sum+ci*Math.pow(mv,i),0); } }
+    
+    const thermocouples = {
+        K: { TtoMV: typeK_TtoMV, MVtoT: typeK_MVtoT, Tmin: -270, Tmax: 1372, Emin: -5.891, Emax: 54.886 },
+        A1: { TtoMV: typeA1_TtoMV, MVtoT: typeA1_MVtoT, Tmin: 0, Tmax: 2500, Emin: 0, Emax: 33.640 },
+        A2: { TtoMV: typeA2_TtoMV, MVtoT: typeA2_MVtoT, Tmin: 0, Tmax: 1800, Emin: 0, Emax: 27.232 },
+        A3: { TtoMV: typeA3_TtoMV, MVtoT: typeA3_MVtoT, Tmin: 0, Tmax: 1800, Emin: 0, Emax: 26.773 },
+        B: { TtoMV: typeB_TtoMV, MVtoT: typeB_MVtoT, Tmin: 0, Tmax: 1820, Emin: 0.291, Emax: 13.820 },
+        E: { TtoMV: typeE_TtoMV, MVtoT: typeE_MVtoT, Tmin: -270, Tmax: 1000, Emin: -8.825, Emax: 76.373 },
+        J: { TtoMV: typeJ_TtoMV, MVtoT: typeJ_MVtoT, Tmin: -210, Tmax: 1200, Emin: -8.095, Emax: 69.553 },
+        L: { TtoMV: typeL_TtoMV, MVtoT: typeL_MVtoT, Tmin: -200, Tmax: 800, Emin: -9.488, Emax: 66.466 },
+        M: { TtoMV: typeM_TtoMV, MVtoT: typeM_MVtoT, Tmin: -200, Tmax: 100, Emin: -6.154, Emax: 4.722 },
+        N: { TtoMV: typeN_TtoMV, MVtoT: typeN_MVtoT, Tmin: -270, Tmax: 1300, Emin: -3.990, Emax: 47.513 },
+        R: { TtoMV: typeR_TtoMV, MVtoT: typeR_MVtoT, Tmin: -50, Tmax: 1768.1, Emin: -0.225, Emax: 21.103 },
+        S: { TtoMV: typeS_TtoMV, MVtoT: typeS_MVtoT, Tmin: -50, Tmax: 1768.1, Emin: -0.235, Emax: 18.694 },
+        T: { TtoMV: typeT_TtoMV, MVtoT: typeT_MVtoT, Tmin: -270, Tmax: 400, Emin: -5.603, Emax: 20.872 }
+    };
+    
+    // ====================================================================
+    // ОБЩИЕ ФУНКЦИИ КОНВЕРТАЦИИ И ИНТЕРФЕЙСА
+    // ====================================================================
+    
+    function toCelsius(val, unit) { if (unit === 'C') return val; if (unit === 'K') return val - 273.15; return (val - 32) * 5 / 9; }
+    function fromCelsius(val, unit) { if (unit === 'C') return val; if (unit === 'K') return val + 273.15; return val * 9 / 5 + 32; }
+    
+    function calcEMF(type, hotC, coldC) {
+        const tc = thermocouples[type];
+        if (!tc) return NaN;
+        return tc.TtoMV(hotC) - tc.TtoMV(coldC);
+    }
+    
+    function calcTempByEMF(type, emfMeas, coldC) {
+        const tc = thermocouples[type];
+        if (!tc) return NaN;
+        return tc.MVtoT(emfMeas + tc.TtoMV(coldC));
+    }
+    
+    function dewPoint(tempC, rh) { const a = 17.27, b = 237.7; const gamma = (a * tempC) / (b + tempC) + Math.log(rh / 100.0); return (b * gamma) / (a - gamma); }
+    
+    let lang = 'ru';
+    let currentUnit = 'C';
+    
+    const texts = {
+        ru: { mainTitle: "Калькулятор термопар", labelEMF: "ЭДС",lblType: "Тип термопары:", lblMode: "Режим:", lblUnit: "Шкала:", modeT2E: "Температура → ЭДС", modeE2T: "ЭДС → Температура", tblTitle: "Таблица (температура → ЭДС)", lblStart: "Начало", lblEnd: "Конец", lblStep: "Шаг", lblColdTbl: "Холодный спай", dewTitle: "Точка росы", lblAirTemp: "Температура воздуха:", lblHum: "Относительная влажность (%):", btnCalc: "Рассчитать точку росы", btnGen: "Сформировать таблицу", btnExp: "Экспорт CSV", hotLab: "Горячий спай:", coldLab: "Холодный спай:", emfLab: "Термо-ЭДС (мВ):", coldRevLab: "Холодный спай:", resultPre: "Результат:", unitEMF: "мВ", dewFormula: "Формула точки росы (Магнус) Tp = b * (a*T/(b+T) + ln(RH)) / (a - a*T/(b+T) - ln(RH))", rangeLabel: "Диапазон", warningOut: "Выход за пределы допустимого диапазона", okMsg: "Значение в допустимом диапазоне", invalid: "Ошибка ввода" },
+        en: { mainTitle: "Thermocouple Calculator",labelEMF: "EMF", lblType: "Type:", lblMode: "Mode:", lblUnit: "Scale:", modeT2E: "Temp → EMF", modeE2T: "EMF → Temp", tblTitle: "Table (Temp → EMF)", lblStart: "Start", lblEnd: "End", lblStep: "Step", lblColdTbl: "Cold junction", dewTitle: "Dew Point", lblAirTemp: "Air temperature:", lblHum: "Relative humidity (%):", btnCalc: "Calculate dew point", btnGen: "Generate table", btnExp: "Export CSV", hotLab: "Hot junction:", coldLab: "Cold junction:", emfLab: "Thermo EMF (mV):", coldRevLab: "Cold junction:", resultPre: "Result:", unitEMF: "mV", dewFormula: "Dew point formula (Magnus) Tp = b * (a*T/(b+T) + ln(RH)) / (a - a*T/(b+T) - ln(RH))", rangeLabel: "Range", warningOut: "Out of allowed range", okMsg: "Value within valid range", invalid: "Input error" }
+    };
+    
+    function getUnitSymbol() { const u = document.getElementById("tempUnit").value; return u === 'C' ? '°C' : u === 'K' ? 'K' : '°F'; }
+    
+    function renderInputs() {
+        const mode = document.getElementById("mode").value;
+        const t = texts[lang];
+        const unitSym = getUnitSymbol();
+        const container = document.getElementById("inputsArea");
+        if (mode === "T2E") {
+            container.innerHTML = `<div class="row"><label>${t.hotLab}</label><input type="number" id="hotTemp" value="100" step="0.5"><span class="unit-badge">${unitSym}</span></div><div class="row"><label>${t.coldLab}</label><input type="number" id="coldTemp" value="20" step="0.5"><span class="unit-badge">${unitSym}</span></div>`;
+            document.getElementById("hotTemp")?.addEventListener("input", computeThermo);
+            document.getElementById("coldTemp")?.addEventListener("input", computeThermo);
+        } else {
+            container.innerHTML = `<div class="row"><label>${t.emfLab}</label><input type="number" id="emfVal" value="4.096" step="0.1"></div><div class="row"><label>${t.coldRevLab}</label><input type="number" id="coldRev" value="20" step="0.5"><span class="unit-badge">${unitSym}</span></div>`;
+            document.getElementById("emfVal")?.addEventListener("input", computeThermo);
+            document.getElementById("coldRev")?.addEventListener("input", computeThermo);
+        }
+    }
+    
+    function computeThermo() {
+        const type = document.getElementById("tcType").value;
+        const mode = document.getElementById("mode").value;
+        const unit = document.getElementById("tempUnit").value;
+        const tc = thermocouples[type];
+        if (!tc) return;
+        let resultVal = "—", warning = "";
+        const t = texts[lang];
+        const unitSym = getUnitSymbol();
+        try {
+            if (mode === "T2E") {
+                let hotRaw = parseFloat(document.getElementById("hotTemp")?.value);
+                let coldRaw = parseFloat(document.getElementById("coldTemp")?.value);
+                if (isNaN(hotRaw) || isNaN(coldRaw)) throw new Error();
+                let hotC = toCelsius(hotRaw, unit), coldC = toCelsius(coldRaw, unit);
+                if (hotC < tc.Tmin || hotC > tc.Tmax || coldC < tc.Tmin || coldC > tc.Tmax) warning = t.warningOut;
+                let emf = calcEMF(type, hotC, coldC);
+                resultVal = `${emf.toFixed(5)} ${t.unitEMF}`;
+            } else {
+                let emf = parseFloat(document.getElementById("emfVal")?.value);
+                let coldRaw = parseFloat(document.getElementById("coldRev")?.value);
+                if (isNaN(emf) || isNaN(coldRaw)) throw new Error();
+                let coldC = toCelsius(coldRaw, unit);
+                if (emf < tc.Emin || emf > tc.Emax) warning = t.warningOut;
+                let tempC = calcTempByEMF(type, emf, coldC);
+                let outTemp = fromCelsius(tempC, unit);
+                resultVal = `${outTemp.toFixed(4)} ${unitSym}`;
+            }
+        } catch { resultVal = t.invalid; warning = t.warningOut; }
+        document.getElementById("resultDisplay").innerHTML = `${t.resultPre} ${resultVal}`;
+        document.getElementById("rangeInfo").innerHTML = `${t.rangeLabel} ${type}: ${fromCelsius(tc.Tmin, unit).toFixed(1)}..${fromCelsius(tc.Tmax, unit).toFixed(1)} ${unitSym} | ${t.labelEMF}: ${tc.Emin.toFixed(3)}..${tc.Emax.toFixed(3)} ${t.unitEMF}<br>${warning || t.okMsg}`;
+        document.getElementById("rangeInfo").className = warning ? "info warning" : "info normal";
+    }
+    
+    function generateTable() {
+        const type = document.getElementById("tcType").value;
+        const unit = document.getElementById("tempUnit").value;
+        const start = parseFloat(document.getElementById("startTemp").value);
+        const end = parseFloat(document.getElementById("endTemp").value);
+        const step = parseFloat(document.getElementById("stepTemp").value);
+        const cold = parseFloat(document.getElementById("coldTable").value);
+        if (isNaN(start) || isNaN(end) || isNaN(step) || isNaN(cold) || step <= 0) return;
+        const startC = toCelsius(start, unit), endC = toCelsius(end, unit), coldC = toCelsius(cold, unit);
+        const tc = thermocouples[type];
+        let rows = [];
+        for (let tC = startC; tC <= endC + 0.01; tC += step) {
+            let emf = tc.TtoMV(tC) - tc.TtoMV(coldC);
+            rows.push({ t: fromCelsius(tC, unit).toFixed(2), emf: isNaN(emf) ? "----" : emf.toFixed(5) });
+        }
+        window.lastRows = rows;
+        let html = `<table><thead><tr><th>Temp (${getUnitSymbol()})</th><th>EMF (${texts[lang].unitEMF})</th></tr></thead><tbody>`;
+        rows.forEach(r => html += `<tr><td>${r.t}</td><td>${r.emf}</td></tr>`);
+        html += `</tbody></table>`;
+        document.getElementById("tableView").innerHTML = html;
+    }
+    
+    function exportCSV() { if (!window.lastRows?.length) generateTable(); const csv = `Temperature (${getUnitSymbol()}),EMF (${texts[lang].unitEMF})\n` + window.lastRows.map(r => `${r.t},${r.emf}`).join("\n"); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `thermocouple_${document.getElementById("tcType").value}.csv`; a.click(); URL.revokeObjectURL(a.href); }
+    
+    function updateDew() { let rawT = parseFloat(document.getElementById("airTemp").value), rh = parseFloat(document.getElementById("humidity").value), unit = document.getElementById("tempUnit").value; if (isNaN(rawT) || isNaN(rh)) return; let tempC = toCelsius(rawT, unit), dewC = dewPoint(tempC, rh), dewOut = fromCelsius(dewC, unit); document.getElementById("dewResult").innerHTML = `${lang === 'ru' ? "Точка росы: " : "Dew point: "}${dewOut.toFixed(2)} ${getUnitSymbol()}`; }
+    
+    function updateUI() { const t = texts[lang]; document.getElementById("mainTitle").innerText = t.mainTitle; document.getElementById("lblType").innerText = t.lblType; document.getElementById("lblMode").innerText = t.lblMode; document.getElementById("lblUnit").innerText = t.lblUnit; document.getElementById("tblTitle").innerText = t.tblTitle; document.getElementById("dewTitle").innerText = t.dewTitle; document.getElementById("lblAirTemp").innerText = t.lblAirTemp; document.getElementById("lblHum").innerText = t.lblHum; document.getElementById("calcDew").innerText = t.btnCalc; document.getElementById("genTable").innerText = t.btnGen; document.getElementById("exportCSV").innerText = t.btnExp; document.getElementById("dewFormulaText").innerHTML = t.dewFormula; const modeSel = document.getElementById("mode"); modeSel.options[0].text = t.modeT2E; modeSel.options[1].text = t.modeE2T; renderInputs(); computeThermo(); updateDew(); document.getElementById("unitDew").innerText = getUnitSymbol(); document.getElementById("lblStart").innerHTML = `${t.lblStart} (${getUnitSymbol()}):`; document.getElementById("lblEnd").innerHTML = `${t.lblEnd} (${getUnitSymbol()}):`; document.getElementById("lblStep").innerHTML = `${t.lblStep} (${getUnitSymbol()}):`; document.getElementById("lblColdTbl").innerHTML = `${t.lblColdTbl} (${getUnitSymbol()}):`; }
+    
+    document.getElementById("tcType").addEventListener("change", () => { computeThermo(); generateTable(); });
+    document.getElementById("mode").addEventListener("change", () => { renderInputs(); computeThermo(); });
+    document.getElementById("tempUnit").addEventListener("change", () => { currentUnit = document.getElementById("tempUnit").value; renderInputs(); computeThermo(); generateTable(); updateDew(); document.getElementById("unitDew").innerText = getUnitSymbol(); updateUI(); });
+    document.getElementById("genTable").addEventListener("click", generateTable);
+    document.getElementById("exportCSV").addEventListener("click", exportCSV);
+    document.getElementById("calcDew").addEventListener("click", updateDew);
+    document.getElementById("airTemp").addEventListener("input", updateDew);
+    document.getElementById("humidity").addEventListener("input", updateDew);
+    document.getElementById("startTemp").addEventListener("input", generateTable);
+    document.getElementById("endTemp").addEventListener("input", generateTable);
+    document.getElementById("stepTemp").addEventListener("input", generateTable);
+    document.getElementById("coldTable").addEventListener("input", generateTable);
+    document.querySelectorAll(".lang-btn").forEach(btn => { btn.addEventListener("click", () => { document.querySelectorAll(".lang-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); lang = btn.getAttribute("data-lang"); updateUI(); generateTable(); }); });
+    
+    updateUI(); generateTable(); updateDew();
+</script>
+</body>
+</html>
