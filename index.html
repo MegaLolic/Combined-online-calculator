@@ -268,24 +268,20 @@
 function exportCSV() {
   if (!window.lastRows?.length) generateTable();
 
-  const sep = ";"; 
-  const header = `Temperature (${getUnitSymbol()})${sep}EMF (${texts[lang].unitEMF})`;
+  const sep = ";";
+  const header = `"Temperature (C)"${sep}"EMF (mV)"`;
   const body = window.lastRows.map(r => `${r.t}${sep}${r.emf}`).join("\n");
-  const csv = header + "\n" + body;
+  const csv = `sep=${sep}\n${header}\n${body}`;
 
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const content = isMobile ? csv : "\uFEFF" + csv;
-
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
   a.href = url;
-  a.download = `thermocouple_${document.getElementById("tcType").value}.csv`;
+  a.download = "thermocouple.csv";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
     function updateDew() { let rawT = parseFloat(document.getElementById("airTemp").value), rh = parseFloat(document.getElementById("humidity").value), unit = document.getElementById("tempUnit").value; if (isNaN(rawT) || isNaN(rh)) return; let tempC = toCelsius(rawT, unit), dewC = dewPoint(tempC, rh), dewOut = fromCelsius(dewC, unit); document.getElementById("dewResult").innerHTML = `${lang === 'ru' ? "Точка росы: " : "Dew point: "}${dewOut.toFixed(2)} ${getUnitSymbol()}`; }
