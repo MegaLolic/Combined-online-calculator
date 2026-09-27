@@ -268,18 +268,26 @@
 function exportCSV() {
   if (!window.lastRows?.length) generateTable();
 
-  const csv = `Temperature (${getUnitSymbol()}),EMF (${texts[lang].unitEMF})\n` +
-    window.lastRows.map(r => `${r.t},${r.emf}`).join("\n");
+  const sep = ";"; 
+  const header = `Temperature (${getUnitSymbol()})${sep}EMF (${texts[lang].unitEMF})`;
+  const body = window.lastRows.map(r => `${r.t}${sep}${r.emf}`).join("\n");
+  const csv = header + "\n" + body;
 
-  const BOM = "\uFEFF"; 
-  const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const content = isMobile ? csv : "\uFEFF" + csv;
+
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
+  a.href = url;
   a.download = `thermocouple_${document.getElementById("tcType").value}.csv`;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
-}    
+  document.body.removeChild(a);
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
     function updateDew() { let rawT = parseFloat(document.getElementById("airTemp").value), rh = parseFloat(document.getElementById("humidity").value), unit = document.getElementById("tempUnit").value; if (isNaN(rawT) || isNaN(rh)) return; let tempC = toCelsius(rawT, unit), dewC = dewPoint(tempC, rh), dewOut = fromCelsius(dewC, unit); document.getElementById("dewResult").innerHTML = `${lang === 'ru' ? "Точка росы: " : "Dew point: "}${dewOut.toFixed(2)} ${getUnitSymbol()}`; }
     
     function updateUI() { const t = texts[lang]; document.getElementById("mainTitle").innerText = t.mainTitle; document.getElementById("lblType").innerText = t.lblType; document.getElementById("lblMode").innerText = t.lblMode; document.getElementById("lblUnit").innerText = t.lblUnit; document.getElementById("tblTitle").innerText = t.tblTitle; document.getElementById("dewTitle").innerText = t.dewTitle; document.getElementById("lblAirTemp").innerText = t.lblAirTemp; document.getElementById("lblHum").innerText = t.lblHum; document.getElementById("calcDew").innerText = t.btnCalc; document.getElementById("genTable").innerText = t.btnGen; document.getElementById("exportCSV").innerText = t.btnExp; document.getElementById("dewFormulaText").innerHTML = t.dewFormula; const modeSel = document.getElementById("mode"); modeSel.options[0].text = t.modeT2E; modeSel.options[1].text = t.modeE2T; renderInputs(); computeThermo(); updateDew(); document.getElementById("unitDew").innerText = getUnitSymbol(); document.getElementById("lblStart").innerHTML = `${t.lblStart} (${getUnitSymbol()}):`; document.getElementById("lblEnd").innerHTML = `${t.lblEnd} (${getUnitSymbol()}):`; document.getElementById("lblStep").innerHTML = `${t.lblStep} (${getUnitSymbol()}):`; document.getElementById("lblColdTbl").innerHTML = `${t.lblColdTbl} (${getUnitSymbol()}):`; }
